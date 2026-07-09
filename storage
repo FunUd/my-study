@@ -1,0 +1,24 @@
+Blob Storage
+  └─ 元ファイル(PDF, Word, Markdown...)
+
+        ↓ インデックス作成
+
+Azure AI Search
+  ├─ 全文インデックス
+  ├─ ベクトル
+  └─ 検索用メタデータ
+
+Cosmos DB
+  ├─ チャット履歴
+  ├─ ユーザー設定
+  ├─ セッション情報
+  ├─ フィードバック
+  └─ エージェント状態
+
+
+例えばチャット履歴を保存しないシンプルなRAGなら、
+Blob Storage
+Azure AI Search
+Azure OpenAI
+だけでも構築できます。
+一方で、ChatGPTのように会話を継続したり、ユーザーごとに履歴を管理したりするなら、Cosmos DBのようなデータベースを組み合わせるのが一般的です。
