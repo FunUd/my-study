@@ -22,3 +22,79 @@ Azure AI Search
 Azure OpenAI
 だけでも構築できます。
 一方で、ChatGPTのように会話を継続したり、ユーザーごとに履歴を管理したりするなら、Cosmos DBのようなデータベースを組み合わせるのが一般的です。
+
+
+
+
+開始
+ │
+ ├─ Q1. 保存したいものはファイル？
+ │      (PDF、画像、動画、Word、Excel、ログなど)
+ │
+ ├─ Yes
+ │    │
+ │    ├─ Q2. SMB/NFSでネットワークドライブとして
+ │    │       マウントしたい？
+ │    │
+ │    ├─ Yes → Azure Files
+ │    │
+ │    └─ No
+ │         │
+ │         ├─ Q3. AI分析・Spark・Fabricなど
+ │         │       ビッグデータ用途？
+ │         │
+ │         ├─ Yes → Azure Data Lake Storage Gen2
+ │         │
+ │         └─ No → Azure Blob Storage
+ │
+ └─ No
+      │
+      ├─ Q4. VMのOSやデータディスク？
+      │
+      ├─ Yes → Managed Disks
+      │
+      └─ No
+           │
+           ├─ Q5. メッセージをためる？
+           │
+           ├─ Yes → Queue Storage
+           │
+           └─ No
+                │
+                ├─ Q6. SQLで検索・JOINしたい？
+                │
+                ├─ Yes → Azure SQL Database
+                │
+                └─ No
+                     │
+                     ├─ Q7. キャッシュ用途？
+                     │
+                     ├─ Yes → Redis
+                     │
+                     └─ No
+                          │
+                          ├─ Q8. AI/RAGの検索インデックス？
+                          │
+                          ├─ Yes → Azure AI Search
+                          │
+                          └─ No
+                               │
+                               ├─ Q9. JSONやKey-Value形式？
+                               │
+                               ├─ No → Azure SQL Database
+                               │
+                               └─ Yes
+                                    │
+                                    ├─ Q10. 数TB以上・グローバル展開・
+                                    │        高スケールが必要？
+                                    │
+                                    ├─ Yes → Cosmos DB
+                                    │
+                                    └─ No
+                                         │
+                                         ├─ Q11. 非常に単純な
+                                         │        Key-Valueだけ？
+                                         │
+                                         ├─ Yes → Table Storage
+                                         │
+                                         └─ No → Cosmos DB
