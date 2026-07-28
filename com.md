@@ -1,4 +1,4 @@
-# 1. Purpose
+1. Purpose
 
 本仕様は、PCソフトウェアとファームウェア間の通信プロトコルを定義する。
 
@@ -11,7 +11,7 @@
 
 ---
 
-# 2. Design Principles
+2. Design Principles
 
 本プロトコルでは、プロトコル全体のバージョン管理は行わない。
 
@@ -25,19 +25,16 @@
 
 ---
 
-# 3. Packet Format
+3. Packet Format
 
-```
 +------------+---------------+----------+
 | Command ID | Payload Length| Payload  |
 +------------+---------------+----------+
-```
 
-| Field | Description |
-|--------|-------------|
-| Command ID | コマンドID |
-| Payload Length | Payloadサイズ(Byte) |
-| Payload | コマンド固有データ |
+Field| Description
+Command ID| コマンドID
+Payload Length| Payloadサイズ(Byte)
+Payload| コマンド固有データ
 
 数値データはすべてリトルエンディアンとする。
 
@@ -45,11 +42,11 @@
 
 ---
 
-# 4. Payload Format
+4. Payload Format
 
 コマンドは以下の2種類のPayload形式を使用する。
 
-## 4.1 Fixed Structure
+4.1 Fixed Structure
 
 高速通信を目的としたコマンド。
 
@@ -70,231 +67,214 @@
 
 Version1
 
-```c
 typedef struct
 {
     uint32_t channel;
     uint32_t count;
 } MeasureRequest;
-```
 
 Version2
 
-```c
 typedef struct
 {
     uint32_t channel;
     uint32_t count;
     uint32_t option;
 } MeasureRequest;
-```
 
-### 拡張ルール
+拡張ルール
 
 - フィールド追加は末尾追加のみ
 - フィールド削除禁止
 - フィールド順変更禁止
 
-FWはPayloadLengthまでを解釈する。
+FWはPayloadLengthまでを解析する。
 
 存在しないフィールドはデフォルト値を使用する。
 
 ---
 
-## 4.2 TLV Structure
+4.2 Flexible Structure
 
 仕様変更が多いコマンドに使用する。
 
 対象例
 
-- Capability
 - Get Configuration
 - Set Configuration
 - Device Information
 - Diagnostic
 
-形式
-
-```
-+------+--------+------+
-| Type | Length | Data |
-+------+--------+------+
-```
-
-| Field | Description |
-|--------|-------------|
-| Type | パラメータID |
-| Length | Data長 |
-| Data | 値 |
+各パラメータはパラメータIDで識別する。
 
 例
 
-```
-Type   = TIMEOUT
-Length = 4
-Value  = 100
+Parameter ID : TIMEOUT
+Value        : 100
 
-Type   = MODE
-Length = 1
-Value  = 2
+Parameter ID : MODE
+Value        : 2
 
-Type   = RETRY_COUNT
-Length = 2
-Value  = 10
-```
+Parameter ID : RETRY_COUNT
+Value        : 10
 
-### 拡張ルール
+拡張ルール
 
-- Type追加は自由
-- 未知TypeはLengthを利用してスキップする
-- Typeの意味は変更しない
+- Parameter ID追加は自由
+- Parameter IDの意味は変更しない
+- 未対応Parameter IDは無視する
 
 ---
 
-# 5. Capability
+5. Capability
 
 接続直後にCapabilityを取得する。
 
-```
+Capabilityは項目ごとに問い合わせる。
+
 CMD_GET_CAPABILITY
-```
 
-Capability自体もTLV形式とする。
+Request
 
-取得内容例
+Capability ID
 
-- Supported Commands
-- Supported TLV Types
-- Device Information
-- Limits
+Response
+
+Supported
+
+または
+
+Capability Value
+
+Capabilityは必要なものだけ問い合わせる。
 
 ---
 
-## 5.1 Supported Commands
+5.1 Supported Commands
+
+Capability ID
+
+CAP_COMMAND_START_MEASURE
+CAP_COMMAND_STOP_MEASURE
+CAP_COMMAND_READ_LOG
+CAP_COMMAND_SET_CONFIG
+CAP_COMMAND_GET_CONFIG
+
+戻り値
+
+Supported = true / false
+
+---
+
+5.2 Command Capability
+
+コマンドごとの対応Parameterを問い合わせる。
 
 例
 
-```
-START_MEASURE
-STOP_MEASURE
-READ_LOG
-SET_CONFIG
-GET_CONFIG
-```
+Request
+
+CAP_SET_CONFIG_RETRY_COUNT
+
+Response
+
+Supported = true
+
+Request
+
+CAP_SET_CONFIG_AUTO_RESET
+
+Response
+
+Supported = false
+
+START_MEASUREも同様
+
+CAP_START_MEASURE_TRIGGER
+
+CAP_START_MEASURE_TIMESTAMP
+
+CAP_START_MEASURE_AVERAGE
+
+などを個別に問い合わせる。
 
 ---
 
-## 5.2 Command Capability
+5.3 Limits
 
-TLV形式のコマンドについて、
-サポートしているType一覧を返す。
+能力値を取得する。
 
 例
 
-```
-Command = SET_CONFIG
+CAP_MAX_PAYLOAD_SIZE
 
-Supported Types
+CAP_MAX_CHANNEL
 
-TIMEOUT
-MODE
-RETRY_COUNT
-AUTO_RESET
-```
+CAP_MAX_LOG_SIZE
 
-```
-Command = START_MEASURE
+CAP_MAX_FILE_SIZE
 
-Supported Types
+Response
 
-TRIGGER
-TIMESTAMP
-AVERAGE
-```
-
-PCはCapabilityを参照し、
-対応しているTypeのみ送信する。
+Value
 
 ---
 
-## 5.3 Limits
-
-例
-
-```
-MAX_PAYLOAD_SIZE
-
-MAX_CHANNEL
-
-MAX_LOG_SIZE
-
-MAX_FILE_SIZE
-```
-
----
-
-# 6. Sending Rule (PC)
+6. Sending Rule (PC)
 
 PC内部では常に最新のデータモデルを保持する。
 
-送信時はCapabilityを参照し、
+接続時に必要なCapabilityを取得し、
 
-相手FWがサポートするTLV Typeのみ送信する。
+対応しているParameterのみ送信する。
 
 例
 
 PC内部
 
-```
 Timeout
 Mode
 RetryCount
 AutoReset
-```
 
 Capability
 
-```
-Timeout
-Mode
-RetryCount
-```
+RetryCount : Supported
+
+AutoReset : Unsupported
 
 送信
 
-```
 Timeout
 Mode
 RetryCount
-```
 
 AutoResetは送信しない。
 
 ---
 
-# 7. Receiving Rule (FW)
+7. Receiving Rule (FW)
 
-## Fixed Structure
+Fixed Structure
 
 - PayloadLengthまでを解析する
 - 存在しないフィールドはデフォルト値を使用する
 
-## TLV
+Flexible Structure
 
-- 未知TypeはLengthを利用してスキップする
-- 未対応Typeは無視する
+- 未対応Parameter IDは無視する
+- 未送信Parameterはデフォルト値を使用する
 
 ---
 
-# 8. Connection Sequence
+8. Connection Sequence
 
-## Case1
+Case1
 
 PC：最新版
 
 FW：最新版
 
-```mermaid
 sequenceDiagram
 
 participant PC
@@ -302,27 +282,24 @@ participant FW
 
 PC->>FW: Connect
 
-PC->>FW: CMD_GET_CAPABILITY
+PC->>FW: GET_CAPABILITY(CAP_SET_CONFIG_RETRY_COUNT)
+FW-->>PC: Supported
 
-FW-->>PC: Capability
-Note over FW: SupportedCommands<br/>Supported TLV Types<br/>Limits
+PC->>FW: GET_CAPABILITY(CAP_SET_CONFIG_AUTO_RESET)
+FW-->>PC: Supported
 
-Note over PC: Capabilityを保存
-
-PC->>FW: SET_CONFIG(TIMEOUT, MODE, RETRY_COUNT)
+PC->>FW: SET_CONFIG(TIMEOUT, MODE, RETRY_COUNT, AUTO_RESET)
 
 FW-->>PC: ACK
-```
 
 ---
 
-## Case2
+Case2
 
 PC：最新版
 
 FW：旧版
 
-```mermaid
 sequenceDiagram
 
 participant PC
@@ -330,27 +307,26 @@ participant FW
 
 PC->>FW: Connect
 
-PC->>FW: CMD_GET_CAPABILITY
+PC->>FW: GET_CAPABILITY(CAP_SET_CONFIG_RETRY_COUNT)
+FW-->>PC: Supported
 
-FW-->>PC: Capability
-Note over FW: SET_CONFIG<br/>TIMEOUT<br/>MODE
+PC->>FW: GET_CAPABILITY(CAP_SET_CONFIG_AUTO_RESET)
+FW-->>PC: Unsupported
 
-Note over PC: RETRY_COUNT未対応と判断
+Note over PC: AUTO_RESETは送信しない
 
-PC->>FW: SET_CONFIG(TIMEOUT, MODE)
+PC->>FW: SET_CONFIG(TIMEOUT, MODE, RETRY_COUNT)
 
 FW-->>PC: ACK
-```
 
 ---
 
-## Case3
+Case3
 
 PC：旧版
 
 FW：最新版
 
-```mermaid
 sequenceDiagram
 
 participant PC
@@ -358,51 +334,45 @@ participant FW
 
 PC->>FW: Connect
 
-PC->>FW: CMD_GET_CAPABILITY
+PC->>FW: GET_CAPABILITY(CAP_SET_CONFIG_RETRY_COUNT)
+FW-->>PC: Supported
 
-FW-->>PC: Capability
-Note over FW: SET_CONFIG<br/>TIMEOUT<br/>MODE<br/>RETRY_COUNT
-
-Note over PC: RETRY_COUNTを知らない
+Note over PC: 旧PCはAUTO_RESETを知らない
 
 PC->>FW: SET_CONFIG(TIMEOUT, MODE)
 
-Note over FW: RETRY_COUNTはデフォルト値
+Note over FW: RETRY_COUNT, AUTO_RESETはデフォルト値
 
 FW-->>PC: ACK
-```
 
 ---
 
-# 9. Compatibility Rules
+9. Compatibility Rules
 
-| Item | Rule |
-|------|------|
-| Header変更 | 禁止 |
-| エンディアン変更 | 禁止 |
-| Protocol Version | 管理しない |
-| Fixed Structure追加 | 末尾追加のみ |
-| Fixed Structure削除 | 禁止 |
-| Fixed Structure順序変更 | 禁止 |
-| TLV Type追加 | 自由 |
-| TLV Type削除 | 非推奨 |
-| 未知TLV Type | 無視 |
-| 未対応TLV Type | 無視 |
-| Capability追加 | 自由 |
+Item| Rule
+Header変更| 禁止
+エンディアン変更| 禁止
+Protocol Version| 管理しない
+Fixed Structure追加| 末尾追加のみ
+Fixed Structure削除| 禁止
+Fixed Structure順序変更| 禁止
+Parameter ID追加| 自由
+Parameter ID削除| 非推奨
+未対応Parameter| 無視
+Capability追加| 自由
 
 ---
 
-# 10. Summary
+10. Summary
 
-| 項目 | 採用方式 |
-|------|----------|
-| Header | Command ID + Payload Length |
-| 数値データ | Little Endian |
-| 高速通信 | Fixed Structure |
-| 設定系 | TLV |
-| Capability | TLV |
-| 後方互換 | Payload Length + TLV |
-| 機能判定 | Capability |
-| Protocol Version | 使用しない |
-| 固定構造体拡張 | 末尾追加のみ |
-| TLV拡張 | Type追加 |
+項目| 採用方式
+Header| Command ID + Payload Length
+数値データ| Little Endian
+高速通信| Fixed Structure
+設定系| Parameter ID方式
+Capability| 項目単位問い合わせ
+後方互換| Payload Length + Capability
+機能判定| Capability
+Protocol Version| 使用しない
+固定構造体拡張| 末尾追加のみ
+Parameter追加| Parameter ID追加
