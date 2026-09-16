@@ -1,5 +1,5 @@
 ---
-name: document-writing-quality
+name: document-authoring-quality
 description: 文書全般を新規作成、再構成、または大幅に修正するときに使用する。仕様書、設計書、調査資料、報告書、手順書などが対象。単純な誤字脱字・一文だけの修正・コードのみの変更・文書種別固有のルールだけを適用する作業には使用しない。
 ---
 
